@@ -9,14 +9,15 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
-import javax.annotation.PostConstruct;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
@@ -24,10 +25,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 
 import com.xiaoyu.beacon.autoconfigure.anno.BeaconExporter;
 import com.xiaoyu.beacon.autoconfigure.anno.BeaconRefer;
@@ -71,16 +75,34 @@ public class EnableBeaconConfiguration {
 
     private static BeaconRegistry Beacon_Registry = null;
 
-    @PostConstruct()
-    public void init() {
-        try {
-            initContext();
-            initRegistry();
-            initProviders();
-            initConsumers();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public BeanPostProcessor beanPostProcessor() {
+        return new BeanPostProcessor() {
+
+            private AtomicBoolean isInit = new AtomicBoolean(false);
+
+            @Override
+            public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+                if (!isInit.get() && isInit.compareAndSet(false, true)) {
+                    try {
+                        initContext();
+                        initRegistry();
+                        initProviders();
+                        initConsumers();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                return bean;
+            }
+
+            @Override
+            public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+                return bean;
+            }
+        };
+
     }
 
     public void initContext() throws Exception {
@@ -95,7 +117,7 @@ public class EnableBeaconConfiguration {
         if (StringUtil.isBlank(beaconProtocol.getPort())) {
             port = Integer.toString(1992);
         }
-        if (!NumberUtils.isCreatable(port)) {
+        if (!NumberUtils.isNumber(port)) {
             throw new Exception("port should be a positive integer in beacon-protocol");
         }
         try {
@@ -114,7 +136,7 @@ public class EnableBeaconConfiguration {
                             e.printStackTrace();
                         }
                     } else if (event instanceof ContextRefreshedEvent) {
-                        //注册exporter
+                        // 注册exporter
                         Registry registry = context.getRegistry();
                         final Set<BeaconPath> sets = exporterSet;
                         try {
@@ -122,7 +144,7 @@ public class EnableBeaconConfiguration {
                                 if (p.getSide() == From.SERVER) {
                                     Class<?> cls = Class.forName(p.getService());
                                     Object proxyBean = springContext.getBean(cls);
-                                    //设置spring bean
+                                    // 设置spring bean
                                     if (proxyBean != null) {
                                         p.setProxy(proxyBean);
                                     }
@@ -197,6 +219,10 @@ public class EnableBeaconConfiguration {
             LOG.info("no beacon-exporter find in classpath.");
             return;
         }
+        // 有接口暴漏,则启动context,相当于启动nettyServer
+        Context context = SpiManager.defaultSpiExtender(Context.class);
+        context.start();
+
         BeaconProtocol beaconProtocol = this.beaconProperties.getProtocol();
         Iterator<String> beanNameIter = proMap.keySet().iterator();
         while (beanNameIter.hasNext()) {
@@ -295,4 +321,5 @@ public class EnableBeaconConfiguration {
         facDef.setConstructorArgumentValues(val);
         return facDef;
     }
+
 }
