@@ -36,6 +36,7 @@ import org.springframework.core.annotation.Order;
 import com.xiaoyu.beacon.autoconfigure.anno.BeaconExporter;
 import com.xiaoyu.beacon.autoconfigure.anno.BeaconRefer;
 import com.xiaoyu.core.common.bean.BeaconPath;
+import com.xiaoyu.core.common.constant.BeaconConstants;
 import com.xiaoyu.core.common.constant.From;
 import com.xiaoyu.core.common.extension.SpiManager;
 import com.xiaoyu.core.common.utils.NetUtil;
@@ -71,15 +72,21 @@ public class EnableBeaconConfiguration {
     @Autowired
     private BeaconProperties beaconProperties;
 
+    // 用来判断是否已经解析完成
     private static BeaconProtocol Beacon_Protocol = null;
 
     private static BeaconRegistry Beacon_Registry = null;
 
+    /**
+     * 注册bean后置处理器,在每个bean初始化都会执行
+     * 
+     * @return
+     */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public BeanPostProcessor beanPostProcessor() {
-        return new BeanPostProcessor() {
-
+        BeanPostProcessor processor = new BeanPostProcessor() {
+            // 通过这里使得postProcessBeforeInitialization里的内容只会执行一次
             private AtomicBoolean isInit = new AtomicBoolean(false);
 
             @Override
@@ -102,23 +109,24 @@ public class EnableBeaconConfiguration {
                 return bean;
             }
         };
+        return processor;
 
     }
 
     public void initContext() throws Exception {
         BeaconProtocol beaconProtocol = beaconProperties.getProtocol();
         if (beaconProtocol == null) {
-            throw new Exception("properties in beacon-protocol should not be null");
+            throw new Exception("Properties in beacon-protocol should not be null");
         }
         String port = beaconProtocol.getPort();
-        if (StringUtil.isBlank(beaconProtocol.getName())) {
-            throw new Exception("name cannot be null in beacon-protocol");
+        if (StringUtil.isEmpty(beaconProtocol.getName())) {
+            throw new Exception("Name cannot be null in beacon-protocol");
         }
-        if (StringUtil.isBlank(beaconProtocol.getPort())) {
+        if (StringUtil.isEmpty(beaconProtocol.getPort())) {
             port = Integer.toString(1992);
         }
         if (!NumberUtils.isNumber(port)) {
-            throw new Exception("port should be a positive integer in beacon-protocol");
+            throw new Exception("Port should be a positive integer in beacon-protocol");
         }
         try {
             Context context = SpiManager.holder(Context.class).target(beaconProtocol.getName());
@@ -129,7 +137,7 @@ public class EnableBeaconConfiguration {
                 @Override
                 public void onApplicationEvent(ApplicationEvent event) {
                     if (event instanceof ContextClosedEvent) {
-                        LOG.info("close the beacon context...");
+                        LOG.info("Close the beacon context...");
                         try {
                             context.stop();
                         } catch (Exception e) {
@@ -137,6 +145,7 @@ public class EnableBeaconConfiguration {
                         }
                     } else if (event instanceof ContextRefreshedEvent) {
                         // 注册exporter
+                        LOG.info("Register the beacon exporter...");
                         Registry registry = context.getRegistry();
                         final Set<BeaconPath> sets = exporterSet;
                         try {
@@ -151,12 +160,12 @@ public class EnableBeaconConfiguration {
                                     registry.registerService(p);
                                 }
                             }
+                            // 使命完成
+                            exporterSet = null;
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-
                     }
-
                 }
             });
         } catch (Exception e) {
@@ -172,28 +181,28 @@ public class EnableBeaconConfiguration {
         if (protocol == null) {
             protocol = "zookeeper";
         }
-        if (StringUtil.isBlank(address)) {
-            throw new Exception("address cannot be null in beacon-registry");
+        if (StringUtil.isEmpty(address)) {
+            throw new Exception("Address cannot be null in beacon-registry");
         }
         String[] addr = address.split(":");
         if (addr.length != 2) {
-            throw new Exception("address->" + address + " is illegal in beacon-registry");
+            throw new Exception("Address->" + address + " is illegal in beacon-registry");
         }
         if (!StringUtil.isIP(addr[0]) || !NumberUtils.isParsable(addr[1])) {
-            throw new Exception("address->" + address + " is illegal in beacon-registry");
+            throw new Exception("Address->" + address + " is illegal in beacon-registry");
         }
-        if (StringUtil.isBlank(protocol)) {
-            throw new Exception("protocol can ignore but not empty in beacon-registry");
+        if (StringUtil.isEmpty(protocol)) {
+            throw new Exception("Protocol can be ignored but not empty in beacon-registry");
         }
 
         try {
             if (Beacon_Registry != null) {
-                LOG.warn("repeat registry.please check in beacon-registry");
+                LOG.warn("Repeat beacon-registry,please check in beacon-registry");
                 return;
             }
             Registry registry = SpiManager.holder(Registry.class).target(protocol);
             if (registry == null) {
-                throw new Exception("cannot find protocol->" + protocol + " in beacon-registry");
+                throw new Exception("Cannot find protocol->" + protocol + " in beacon-registry");
             }
             registry.address(address);
             Context context = null;
@@ -216,20 +225,16 @@ public class EnableBeaconConfiguration {
     public void initProviders() throws Exception {
         Map<String, Object> proMap = this.springContext.getBeansWithAnnotation(BeaconExporter.class);
         if (proMap.isEmpty()) {
-            LOG.info("no beacon-exporter find in classpath.");
+            LOG.info("No beacon-exporter find in classpath.");
             return;
         }
-        // 有接口暴漏,则启动context,相当于启动nettyServer
-        Context context = SpiManager.defaultSpiExtender(Context.class);
-        context.start();
-
         BeaconProtocol beaconProtocol = this.beaconProperties.getProtocol();
         Iterator<String> beanNameIter = proMap.keySet().iterator();
         while (beanNameIter.hasNext()) {
             String beanName = beanNameIter.next();
             BeaconExporter anno = this.springContext.findAnnotationOnBean(beanName, BeaconExporter.class);
-            if (StringUtil.isBlank(anno.interfaceName())) {
-                throw new Exception("interfaceName cannot be null in beacon-provider");
+            if (StringUtil.isEmpty(anno.interfaceName())) {
+                throw new Exception("InterfaceName cannot be null in beacon-provider");
             }
             String refName = proMap.get(beanName).getClass().getName();
             try {
@@ -243,32 +248,35 @@ public class EnableBeaconConfiguration {
                 beaconPath.setPort(beaconProtocol.getPort());
                 exporterSet.add(beaconPath);
             } catch (Exception e) {
-                LOG.error("cannot resolve exporter,please check in {}", refName);
+                LOG.error("Cannot resolve exporter,please check in {}", refName);
                 return;
             }
         }
 
+        // 有接口暴漏,则启动context,相当于启动nettyServer
+        Context context = SpiManager.defaultSpiExtender(Context.class);
+        context.start();
     }
 
     public void initConsumers() {
         Map<String, Object> conMap = this.springContext.getBeansWithAnnotation(BeaconRefer.class);
         if (conMap.isEmpty()) {
-            LOG.info("no beacon-reference find in classpath.");
+            LOG.info("No beacon-reference find in classpath");
             return;
         }
         BeaconRegistry beaconReg = beaconProperties.getRegistry();
-        Map<String, BeanDefinition> beanMap = new HashMap<>();
+        Map<String, BeanDefinition> beanMap = new HashMap<>(16);
         Iterator<Object> iter = conMap.values().iterator();
         while (iter.hasNext()) {
             BeaconReferConfiguration config = (BeaconReferConfiguration) iter.next();
             BeaconReference[] refers = config.beaconReference();
             for (BeaconReference r : refers) {
                 try {
-                    if (StringUtil.isBlank(r.getInterfaceName())) {
-                        throw new Exception("interfaceName cannot be null in beacon-consumer");
+                    if (StringUtil.isEmpty(r.getInterfaceName())) {
+                        throw new Exception("InterfaceName cannot be null in beacon-consumer");
                     }
-                    if (StringUtil.isBlank(r.getTimeout())) {
-                        r.setTimeout("3000");
+                    if (StringUtil.isEmpty(r.getTimeout())) {
+                        r.setTimeout(BeaconConstants.REQUEST_TIMEOUT);
                     }
                     // 注册服务
                     BeaconPath beaconPath = new BeaconPath();
@@ -276,13 +284,13 @@ public class EnableBeaconConfiguration {
                             .setSide(From.CLIENT)
                             .setService(r.getInterfaceName())
                             .setHost(NetUtil.localIP())
-                            .setTimeout(r.getTimeout());
+                            .setTimeout(r.getTimeout())
+                            .setRetry(r.getRetry());
 
                     Class<?> target = Class.forName(r.getInterfaceName());
                     String beanName = StringUtil.lowerFirstChar(target.getSimpleName());
                     if (this.springContext.containsBeanDefinition(beanName)) {
-                        LOG.warn("repeat register.please check in beacon-reference with id->{},interface->{}",
-                                r.getId(),
+                        LOG.warn("Repeat register,please check in beacon-reference with interface->{}",
                                 r.getInterfaceName());
                         return;
                     }
@@ -292,8 +300,8 @@ public class EnableBeaconConfiguration {
                     beanMap.put(beanName, facDef);
 
                 } catch (Exception e) {
-                    LOG.error("cannot resolve reference,please check in beacon-reference with id->{},interface->{}",
-                            r.getId(), r.getInterfaceName());
+                    LOG.error("Cannot resolve reference,please check in beacon-reference with interface->{}",
+                            r.getInterfaceName());
                     return;
                 }
 
