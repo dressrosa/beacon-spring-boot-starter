@@ -65,10 +65,10 @@ public class HelloServiceImpl implements IHelloService {
 public class TestBeaconRefer extends BeaconReferConfiguration {
 
     @Override
-    protected BeaconReference[] doFindBeaconRefers() {
+    protected List<BeaconReference> doFindBeaconRefers() {
         List<BeaconReference> list = new ArrayList<>();
         list.add(new BeaconReference().setInterfaceName(IHelloService.class.getName()));
-        return list.toArray(new BeaconReference[] {});
+        return list;
     }
 
 }

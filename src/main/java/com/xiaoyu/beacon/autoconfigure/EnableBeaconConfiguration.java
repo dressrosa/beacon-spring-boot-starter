@@ -6,6 +6,7 @@ package com.xiaoyu.beacon.autoconfigure;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -128,50 +129,45 @@ public class EnableBeaconConfiguration {
         if (!NumberUtils.isNumber(port)) {
             throw new Exception("Port should be a positive integer in beacon-protocol");
         }
-        try {
-            Context context = SpiManager.holder(Context.class).target(beaconProtocol.getName());
-            context.server(Integer.valueOf(port));
-            // 赋值
-            Beacon_Protocol = beaconProtocol;
-            this.springContext.addApplicationListener(new ApplicationListener<ApplicationEvent>() {
-                @Override
-                public void onApplicationEvent(ApplicationEvent event) {
-                    if (event instanceof ContextClosedEvent) {
-                        LOG.info("Close the beacon context...");
-                        try {
-                            context.stop();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    } else if (event instanceof ContextRefreshedEvent) {
-                        // 注册exporter
-                        LOG.info("Register the beacon exporter...");
-                        Registry registry = context.getRegistry();
-                        final Set<BeaconPath> sets = exporterSet;
-                        try {
-                            for (BeaconPath p : sets) {
-                                if (p.getSide() == From.SERVER) {
-                                    Class<?> cls = Class.forName(p.getService());
-                                    Object proxyBean = springContext.getBean(cls);
-                                    // 设置spring bean
-                                    if (proxyBean != null) {
-                                        p.setProxy(proxyBean);
-                                    }
-                                    registry.registerService(p);
+        Context context = SpiManager.holder(Context.class).target(beaconProtocol.getName());
+        context.server(Integer.valueOf(port));
+        // 赋值
+        Beacon_Protocol = beaconProtocol;
+        this.springContext.addApplicationListener(new ApplicationListener<ApplicationEvent>() {
+            @Override
+            public void onApplicationEvent(ApplicationEvent event) {
+                if (event instanceof ContextClosedEvent) {
+                    LOG.info("Close the beacon context...");
+                    try {
+                        context.stop();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                } else if (event instanceof ContextRefreshedEvent) {
+                    // 注册exporter
+                    LOG.info("Register the beacon exporter...");
+                    Registry registry = context.getRegistry();
+                    final Set<BeaconPath> sets = exporterSet;
+                    try {
+                        for (BeaconPath p : sets) {
+                            if (p.getSide() == From.SERVER) {
+                                Class<?> cls = Class.forName(p.getService());
+                                Object proxyBean = springContext.getBean(cls);
+                                // 设置spring bean
+                                if (proxyBean != null) {
+                                    p.setProxy(proxyBean);
                                 }
+                                registry.registerService(p);
                             }
-                            // 使命完成
-                            exporterSet = null;
-                        } catch (Exception e) {
-                            e.printStackTrace();
                         }
+                        // 使命完成
+                        exporterSet = null;
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
+            }
+        });
     }
 
     public void initRegistry() throws Exception {
@@ -195,31 +191,26 @@ public class EnableBeaconConfiguration {
             throw new Exception("Protocol can be ignored but not empty in beacon-registry");
         }
 
-        try {
-            if (Beacon_Registry != null) {
-                LOG.warn("Repeat beacon-registry,please check in beacon-registry");
-                return;
-            }
-            Registry registry = SpiManager.holder(Registry.class).target(protocol);
-            if (registry == null) {
-                throw new Exception("Cannot find protocol->" + protocol + " in beacon-registry");
-            }
-            registry.address(address);
-            Context context = null;
-            if (Beacon_Protocol != null) {
-                context = SpiManager.holder(Context.class).target(Beacon_Protocol.getName());
-                context.registry(registry);
-            } else {
-                // client端没有beaconProtocol
-                context = SpiManager.defaultSpiExtender(Context.class);
-                context.registry(registry);
-            }
-            // 赋值
-            Beacon_Registry = reg;
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (Beacon_Registry != null) {
+            LOG.warn("Repeat beacon-registry,please check in beacon-registry");
             return;
         }
+        Registry registry = SpiManager.holder(Registry.class).target(protocol);
+        if (registry == null) {
+            throw new Exception("Cannot find protocol->" + protocol + " in beacon-registry");
+        }
+        registry.address(address);
+        Context context = null;
+        if (Beacon_Protocol != null) {
+            context = SpiManager.holder(Context.class).target(Beacon_Protocol.getName());
+            context.registry(registry);
+        } else {
+            // client端没有beaconProtocol
+            context = SpiManager.defaultSpiExtender(Context.class);
+            context.registry(registry);
+        }
+        // 赋值
+        Beacon_Registry = reg;
     }
 
     public void initProviders() throws Exception {
@@ -252,8 +243,7 @@ public class EnableBeaconConfiguration {
                 return;
             }
         }
-
-        // 有接口暴漏,则启动context,相当于启动nettyServer
+        // 有provider暴漏,则启动context,相当于启动nettyServer
         Context context = SpiManager.defaultSpiExtender(Context.class);
         context.start();
     }
@@ -269,7 +259,10 @@ public class EnableBeaconConfiguration {
         Iterator<Object> iter = conMap.values().iterator();
         while (iter.hasNext()) {
             BeaconReferConfiguration config = (BeaconReferConfiguration) iter.next();
-            BeaconReference[] refers = config.beaconReference();
+            List<BeaconReference> refers = config.beaconReference();
+            if (refers == null) {
+                return;
+            }
             for (BeaconReference r : refers) {
                 try {
                     if (StringUtil.isEmpty(r.getInterfaceName())) {
@@ -285,7 +278,8 @@ public class EnableBeaconConfiguration {
                             .setService(r.getInterfaceName())
                             .setHost(NetUtil.localIP())
                             .setTimeout(r.getTimeout())
-                            .setRetry(r.getRetry());
+                            .setRetry(r.getRetry())
+                            .setCheck(r.getCheck());
 
                     Class<?> target = Class.forName(r.getInterfaceName());
                     String beanName = StringUtil.lowerFirstChar(target.getSimpleName());

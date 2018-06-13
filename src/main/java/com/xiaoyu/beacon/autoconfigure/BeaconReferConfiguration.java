@@ -3,6 +3,8 @@
  */
 package com.xiaoyu.beacon.autoconfigure;
 
+import java.util.List;
+
 import com.xiaoyu.beacon.autoconfigure.anno.BeaconRefer;
 import com.xiaoyu.spring.config.BeaconReference;
 
@@ -28,7 +30,7 @@ import com.xiaoyu.spring.config.BeaconReference;
 @BeaconRefer
 public abstract class BeaconReferConfiguration {
 
-    public final BeaconReference[] beaconReference() {
+    public final List<BeaconReference> beaconReference() {
         return this.doFindBeaconRefers();
     }
 
@@ -37,5 +39,5 @@ public abstract class BeaconReferConfiguration {
      * 
      * @return
      */
-    protected abstract BeaconReference[] doFindBeaconRefers();
+    protected abstract List<BeaconReference> doFindBeaconRefers();
 }
