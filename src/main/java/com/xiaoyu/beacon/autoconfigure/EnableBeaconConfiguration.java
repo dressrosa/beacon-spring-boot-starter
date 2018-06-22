@@ -279,7 +279,8 @@ public class EnableBeaconConfiguration {
                             .setHost(NetUtil.localIP())
                             .setTimeout(r.getTimeout())
                             .setRetry(r.getRetry())
-                            .setCheck(r.getCheck());
+                            .setCheck(r.getCheck())
+                            .setTolerant(r.getTolerant());
 
                     Class<?> target = Class.forName(r.getInterfaceName());
                     String beanName = StringUtil.lowerFirstChar(target.getSimpleName());

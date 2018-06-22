@@ -31,7 +31,17 @@ import com.xiaoyu.spring.config.BeaconReference;
 public abstract class BeaconReferConfiguration {
 
     public final List<BeaconReference> beaconReference() {
-        return this.doFindBeaconRefers();
+        List<BeaconReference> referList = null;
+        try {
+            referList = this.doFindBeaconRefers();
+            if(referList == null) {
+                throw new Exception("list of beaconReference cannot be nulll");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return referList;
+        
     }
 
     /**
@@ -39,5 +49,5 @@ public abstract class BeaconReferConfiguration {
      * 
      * @return
      */
-    protected abstract List<BeaconReference> doFindBeaconRefers();
+    protected abstract List<BeaconReference> doFindBeaconRefers() throws Exception;
 }
