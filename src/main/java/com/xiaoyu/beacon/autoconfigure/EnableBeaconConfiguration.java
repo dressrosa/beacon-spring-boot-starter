@@ -3,6 +3,7 @@
  */
 package com.xiaoyu.beacon.autoconfigure;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -220,14 +221,32 @@ public class EnableBeaconConfiguration {
             return;
         }
         BeaconProtocol beaconProtocol = this.beaconProperties.getProtocol();
-        Iterator<String> beanNameIter = proMap.keySet().iterator();
-        while (beanNameIter.hasNext()) {
-            String beanName = beanNameIter.next();
+        Iterator<Entry<String, Object>> beanEntryIter = proMap.entrySet().iterator();
+        while (beanEntryIter.hasNext()) {
+            Entry<String, Object> entry = beanEntryIter.next();
+            String beanName = entry.getKey();
+            Object bean = entry.getValue();
             BeaconExporter anno = this.springContext.findAnnotationOnBean(beanName, BeaconExporter.class);
             if (StringUtil.isEmpty(anno.interfaceName())) {
                 throw new Exception("InterfaceName cannot be null in beacon-provider");
             }
-            String refName = proMap.get(beanName).getClass().getName();
+            String refName = bean.getClass().getName();
+            String methods = null;
+            if (StringUtil.isNotEmpty(anno.methods())) {
+                if (anno.methods().contains("&")) {
+                    throw new Exception("Methods contain the illegal character '&' in beacon-provider");
+                }
+                methods = anno.methods();
+            } else {
+                // 取所有的方法
+                Method[] mes = bean.getClass().getDeclaredMethods();
+                StringBuilder namesBuilder = new StringBuilder();
+                for (int i = 0; i < mes.length - 1; i++) {
+                    namesBuilder.append(mes[i].getName()).append(",");
+                }
+                namesBuilder.append(mes[mes.length - 1].getName());
+                methods = namesBuilder.toString();
+            }
             try {
                 // 注册服务
                 BeaconPath beaconPath = new BeaconPath();
@@ -235,7 +254,8 @@ public class EnableBeaconConfiguration {
                         .setSide(From.SERVER)
                         .setService(anno.interfaceName())
                         .setRef(refName)
-                        .setHost(NetUtil.localIP());
+                        .setHost(NetUtil.localIP())
+                        .setMethods(methods);
                 beaconPath.setPort(beaconProtocol.getPort());
                 exporterSet.add(beaconPath);
             } catch (Exception e) {

@@ -20,26 +20,6 @@
     <dependencies>
         <dependency>
             <groupId>com.xiaoyu</groupId>
-            <artifactId>beacon-log</artifactId>
-            <version>${beacon.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.xiaoyu</groupId>
-            <artifactId>beacon-common</artifactId>
-            <version>${beacon.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.xiaoyu</groupId>
-            <artifactId>beacon-registry-api</artifactId>
-            <version>${beacon.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.xiaoyu</groupId>
-            <artifactId>beacon-rpc-api</artifactId>
-            <version>${beacon.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.xiaoyu</groupId>
             <artifactId>beacon-spring</artifactId>
             <version>${beacon.version}</version>
         </dependency>
@@ -68,7 +48,7 @@
                     <execution>
                         <id>attach-sources</id>
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                     </execution>
                 </executions>

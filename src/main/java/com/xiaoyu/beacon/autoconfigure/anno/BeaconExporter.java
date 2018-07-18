@@ -20,6 +20,12 @@ import java.lang.annotation.Target;
 public @interface BeaconExporter {
 
     String interfaceName() default "";
-    
+
+    /**
+     * 以逗号分隔
+     * 
+     * @return
+     */
+    String methods() default "";
 
 }
