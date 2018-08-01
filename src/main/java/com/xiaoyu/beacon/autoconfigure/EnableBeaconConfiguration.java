@@ -138,15 +138,15 @@ public class EnableBeaconConfiguration {
             @Override
             public void onApplicationEvent(ApplicationEvent event) {
                 if (event instanceof ContextClosedEvent) {
-                    LOG.info("Close the beacon context...");
+                    LOG.info("Close the beacon context.");
                     try {
-                        context.stop();
+                        context.shutdown();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 } else if (event instanceof ContextRefreshedEvent) {
                     // 注册exporter
-                    LOG.info("Register the beacon exporter...");
+                    LOG.info("Register the beacon exporter.");
                     Registry registry = context.getRegistry();
                     final Set<BeaconPath> sets = exporterSet;
                     try {
@@ -255,7 +255,8 @@ public class EnableBeaconConfiguration {
                         .setService(anno.interfaceName())
                         .setRef(refName)
                         .setHost(NetUtil.localIP())
-                        .setMethods(methods);
+                        .setMethods(methods)
+                        .setGroup(anno.group().trim());
                 beaconPath.setPort(beaconProtocol.getPort());
                 exporterSet.add(beaconPath);
             } catch (Exception e) {
@@ -291,6 +292,9 @@ public class EnableBeaconConfiguration {
                     if (StringUtil.isEmpty(r.getTimeout())) {
                         r.setTimeout(BeaconConstants.REQUEST_TIMEOUT);
                     }
+                    if (StringUtil.isEmpty(r.getGroup())) {
+                        r.setGroup("");
+                    }
                     // 注册服务
                     BeaconPath beaconPath = new BeaconPath();
                     beaconPath
@@ -300,7 +304,8 @@ public class EnableBeaconConfiguration {
                             .setTimeout(r.getTimeout())
                             .setRetry(r.getRetry())
                             .setCheck(r.getCheck())
-                            .setTolerant(r.getTolerant());
+                            .setTolerant(r.getTolerant())
+                            .setGroup(r.getGroup());
 
                     Class<?> target = Class.forName(r.getInterfaceName());
                     String beanName = StringUtil.lowerFirstChar(target.getSimpleName());

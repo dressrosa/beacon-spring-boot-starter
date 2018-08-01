@@ -28,4 +28,11 @@ public @interface BeaconExporter {
      */
     String methods() default "";
 
+    /**
+     * 服务分组
+     * 
+     * @return
+     */
+    String group() default "";
+
 }
