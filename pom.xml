@@ -10,7 +10,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <beacon.version>0.0.1-SNAPSHOT</beacon.version>
     </properties>
-
+    <packaging>jar</packaging>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -22,6 +22,7 @@
             <groupId>com.xiaoyu</groupId>
             <artifactId>beacon-spring</artifactId>
             <version>${beacon.version}</version>
+            <systemPath></systemPath>
         </dependency>
 
         <dependency>

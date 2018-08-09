@@ -124,11 +124,13 @@ public class EnableBeaconConfiguration {
         if (StringUtil.isEmpty(beaconProtocol.getName())) {
             throw new Exception("Name cannot be null in beacon-protocol");
         }
-        if (StringUtil.isEmpty(beaconProtocol.getPort())) {
-            port = Integer.toString(1992);
-        }
-        if (!NumberUtils.isNumber(port)) {
-            throw new Exception("Port should be a positive integer in beacon-protocol");
+        if (beaconProtocol.getName().equals("beacon")) {
+            if (StringUtil.isEmpty(beaconProtocol.getPort())) {
+                port = Integer.toString(1992);
+            }
+            if (NumberUtils.isNumber(port)) {
+                throw new Exception("Port should be a positive integer in beacon-protocol");
+            }
         }
         Context context = SpiManager.holder(Context.class).target(beaconProtocol.getName());
         context.server(Integer.valueOf(port));
