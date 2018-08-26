@@ -20,7 +20,6 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -97,8 +96,8 @@ public class EnableBeaconConfiguration {
                     try {
                         initContext();
                         initRegistry();
-                        initProviders();
                         initConsumers();
+                        initProviders();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -128,7 +127,7 @@ public class EnableBeaconConfiguration {
             if (StringUtil.isEmpty(beaconProtocol.getPort())) {
                 port = Integer.toString(1992);
             }
-            if (NumberUtils.isNumber(port)) {
+            if (!NumberUtils.isNumber(port)) {
                 throw new Exception("Port should be a positive integer in beacon-protocol");
             }
         }
@@ -154,11 +153,20 @@ public class EnableBeaconConfiguration {
                     try {
                         for (BeaconPath p : sets) {
                             if (p.getSide() == From.SERVER) {
-                                Class<?> cls = Class.forName(p.getService());
-                                Object proxyBean = springContext.getBean(cls);
+                                Class<?> cls = Class.forName(p.getRef());
+                                Map<String, ?> proxyBeans = springContext.getBeansOfType(cls, false, false);
                                 // 设置spring bean
-                                if (proxyBean != null) {
-                                    p.setProxy(proxyBean);
+                                Iterator<?> iter = proxyBeans.values().iterator();
+                                if (proxyBeans.size() == 1) {
+                                    p.setProxy(iter.next());
+                                } else {
+                                    while (iter.hasNext()) {
+                                        Object bean = iter.next();
+                                        if (cls.isInstance(bean)) {
+                                            p.setProxy(bean);
+                                            break;
+                                        }
+                                    }
                                 }
                                 registry.registerService(p);
                             }
@@ -223,16 +231,23 @@ public class EnableBeaconConfiguration {
             return;
         }
         BeaconProtocol beaconProtocol = this.beaconProperties.getProtocol();
+        // 多个bean可能对应的是同一个代理类,这里用来过滤
+        Set<String> filter = new HashSet<>();
         Iterator<Entry<String, Object>> beanEntryIter = proMap.entrySet().iterator();
         while (beanEntryIter.hasNext()) {
             Entry<String, Object> entry = beanEntryIter.next();
             String beanName = entry.getKey();
             Object bean = entry.getValue();
+            String beanStr = bean.toString();
+            if (filter.contains(beanStr)) {
+                continue;
+            }
             BeaconExporter anno = this.springContext.findAnnotationOnBean(beanName, BeaconExporter.class);
             if (StringUtil.isEmpty(anno.interfaceName())) {
                 throw new Exception("InterfaceName cannot be null in beacon-provider");
             }
-            String refName = bean.getClass().getName();
+            // spring bean需要取到原生的class (com.xiaoyu.xxxServiceImpl@5eabff6b)
+            String refName = beanStr.substring(0, beanStr.indexOf("@"));
             String methods = null;
             if (StringUtil.isNotEmpty(anno.methods())) {
                 if (anno.methods().contains("&")) {
@@ -241,12 +256,13 @@ public class EnableBeaconConfiguration {
                 methods = anno.methods();
             } else {
                 // 取所有的方法
-                Method[] mes = bean.getClass().getDeclaredMethods();
+                Method[] mes = Class.forName(anno.interfaceName()).getDeclaredMethods();
                 StringBuilder namesBuilder = new StringBuilder();
-                for (int i = 0; i < mes.length - 1; i++) {
+                int len = mes.length - 1;
+                for (int i = 0; i < len; i++) {
                     namesBuilder.append(mes[i].getName()).append(",");
                 }
-                namesBuilder.append(mes[mes.length - 1].getName());
+                namesBuilder.append(mes[len].getName());
                 methods = namesBuilder.toString();
             }
             try {
@@ -265,6 +281,7 @@ public class EnableBeaconConfiguration {
                 LOG.error("Cannot resolve exporter,please check in {}", refName);
                 return;
             }
+            filter.add(beanStr);
         }
         // 有provider暴漏,则启动context,相当于启动nettyServer
         Context context = SpiManager.defaultSpiExtender(Context.class);
@@ -338,17 +355,13 @@ public class EnableBeaconConfiguration {
         }
     }
 
-    private BeanDefinition generateFactoryBean(Class<?> target, Registry registry) {
-        BeaconFactoryBean fac = new BeaconFactoryBean(target, registry);
+    private BeanDefinition generateFactoryBean(Class<?> target, Registry registry) throws Exception {
         GenericBeanDefinition facDef = new GenericBeanDefinition();
-        facDef.setBeanClass(fac.getClass());
+        facDef.setBeanClass(BeaconFactoryBean.class);
+        facDef.getPropertyValues().add("target", target);
+        facDef.getPropertyValues().add("registry", registry);
         facDef.setLazyInit(false);
         facDef.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
-        // 构造函数
-        ConstructorArgumentValues val = new ConstructorArgumentValues();
-        val.addGenericArgumentValue(target);
-        val.addGenericArgumentValue(registry);
-        facDef.setConstructorArgumentValues(val);
         return facDef;
     }
 
