@@ -40,6 +40,7 @@ import com.xiaoyu.core.common.bean.BeaconPath;
 import com.xiaoyu.core.common.constant.BeaconConstants;
 import com.xiaoyu.core.common.constant.From;
 import com.xiaoyu.core.common.extension.SpiManager;
+import com.xiaoyu.core.common.utils.BeaconUtil;
 import com.xiaoyu.core.common.utils.NetUtil;
 import com.xiaoyu.core.common.utils.StringUtil;
 import com.xiaoyu.core.register.Registry;
@@ -154,17 +155,28 @@ public class EnableBeaconConfiguration {
                         for (BeaconPath p : sets) {
                             if (p.getSide() == From.SERVER) {
                                 Class<?> cls = Class.forName(p.getRef());
-                                Map<String, ?> proxyBeans = springContext.getBeansOfType(cls, false, false);
-                                // 设置spring bean
-                                Iterator<?> iter = proxyBeans.values().iterator();
-                                if (proxyBeans.size() == 1) {
-                                    p.setProxy(iter.next());
+                                Map<String, ?> proxyBeans = springContext.getBeansOfType(cls, true, true);
+                                // TODO
+                                if (proxyBeans.isEmpty()) {
+                                    String key = StringUtil.lowerFirstChar(cls.getSimpleName());
+                                    if (springContext.containsBean(key)) {
+                                        p.setProxy(BeaconUtil.getOriginBean(springContext.getBean(key)));
+                                    } else {
+                                        throw new Exception(
+                                                "cannot find spring bean with name '" + cls.getName() + "'");
+                                    }
                                 } else {
-                                    while (iter.hasNext()) {
-                                        Object bean = iter.next();
-                                        if (cls.isInstance(bean)) {
-                                            p.setProxy(bean);
-                                            break;
+                                    // 设置spring bean
+                                    Iterator<?> iter = proxyBeans.values().iterator();
+                                    if (proxyBeans.size() == 1) {
+                                        p.setProxy(iter.next());
+                                    } else {
+                                        while (iter.hasNext()) {
+                                            Object bean = iter.next();
+                                            if (cls.isInstance(bean)) {
+                                                p.setProxy(bean);
+                                                break;
+                                            }
                                         }
                                     }
                                 }
