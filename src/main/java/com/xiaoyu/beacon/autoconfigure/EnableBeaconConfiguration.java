@@ -286,7 +286,9 @@ public class EnableBeaconConfiguration {
                         .setRef(refName)
                         .setHost(NetUtil.localIP())
                         .setMethods(methods)
-                        .setGroup(anno.group().trim());
+                        .setGroup(anno.group().trim())
+                        .setDowngrade("")
+                        .setTolerant("");
                 beaconPath.setPort(beaconProtocol.getPort());
                 exporterSet.add(beaconPath);
             } catch (Exception e) {
@@ -300,7 +302,7 @@ public class EnableBeaconConfiguration {
         context.start();
     }
 
-    public void initConsumers() {
+    public void initConsumers() throws Exception {
         Map<String, Object> conMap = this.springContext.getBeansWithAnnotation(BeaconRefer.class);
         if (conMap.isEmpty()) {
             LOG.info("No beacon-reference find in classpath");
@@ -316,46 +318,54 @@ public class EnableBeaconConfiguration {
                 return;
             }
             for (BeaconReference r : refers) {
-                try {
-                    if (StringUtil.isEmpty(r.getInterfaceName())) {
-                        throw new Exception("InterfaceName cannot be null in beacon-consumer");
+                if (StringUtil.isEmpty(r.getInterfaceName())) {
+                    throw new Exception("InterfaceName cannot be null in beacon-consumer");
+                }
+                if (StringUtil.isEmpty(r.getTimeout())) {
+                    r.setTimeout(BeaconConstants.REQUEST_TIMEOUT);
+                }
+                if (StringUtil.isBlank(r.getGroup())) {
+                    r.setGroup("");
+                }
+                if (StringUtil.isBlank(r.getDowngrade())) {
+                    r.setDowngrade("");
+                } else {
+                    String[] arr = r.getDowngrade().split(":");
+                    if (arr.length < 2) {
+                        throw new Exception(
+                                "Cannot resolve reference in beacon-reference with downgrade:" + r.getDowngrade());
                     }
-                    if (StringUtil.isEmpty(r.getTimeout())) {
-                        r.setTimeout(BeaconConstants.REQUEST_TIMEOUT);
+                    if (!("query".equals(arr[0]) || "fault".equals(arr[0]) || "timeout".equals(arr[0]))
+                            || !StringUtil.isNumeric(arr[1])) {
+                        throw new Exception(
+                                "Cannot resolve reference in beacon-reference with wrong downgrade strategy ["
+                                        + r.getDowngrade() + "]");
                     }
-                    if (StringUtil.isEmpty(r.getGroup())) {
-                        r.setGroup("");
-                    }
-                    // 注册服务
-                    BeaconPath beaconPath = new BeaconPath();
-                    beaconPath
-                            .setSide(From.CLIENT)
-                            .setService(r.getInterfaceName())
-                            .setHost(NetUtil.localIP())
-                            .setTimeout(r.getTimeout())
-                            .setRetry(r.getRetry())
-                            .setCheck(r.getCheck())
-                            .setTolerant(r.getTolerant())
-                            .setGroup(r.getGroup());
+                }
+                // 注册服务
+                BeaconPath beaconPath = new BeaconPath();
+                beaconPath
+                        .setSide(From.CLIENT)
+                        .setService(r.getInterfaceName())
+                        .setHost(NetUtil.localIP())
+                        .setTimeout(r.getTimeout())
+                        .setRetry(r.getRetry())
+                        .setCheck(r.getCheck())
+                        .setTolerant(r.getTolerant())
+                        .setGroup(r.getGroup())
+                        .setDowngrade(r.getDowngrade());
 
-                    Class<?> target = Class.forName(r.getInterfaceName());
-                    String beanName = StringUtil.lowerFirstChar(target.getSimpleName());
-                    if (this.springContext.containsBeanDefinition(beanName)) {
-                        LOG.warn("Repeat register,please check in beacon-reference with interface->{}",
-                                r.getInterfaceName());
-                        return;
-                    }
-                    Registry registry = SpiManager.holder(Registry.class).target(beaconReg.getProtocol());
-                    registry.registerService(beaconPath);
-                    BeanDefinition facDef = this.generateFactoryBean(target, registry);
-                    beanMap.put(beanName, facDef);
-
-                } catch (Exception e) {
-                    LOG.error("Cannot resolve reference,please check in beacon-reference with interface->{}",
+                Class<?> target = Class.forName(r.getInterfaceName());
+                String beanName = StringUtil.lowerFirstChar(target.getSimpleName());
+                if (this.springContext.containsBeanDefinition(beanName)) {
+                    LOG.warn("Repeat register,please check in beacon-reference with interface->{}",
                             r.getInterfaceName());
                     return;
                 }
-
+                Registry registry = SpiManager.holder(Registry.class).target(beaconReg.getProtocol());
+                registry.registerService(beaconPath);
+                BeanDefinition facDef = this.generateFactoryBean(target, registry);
+                beanMap.put(beanName, facDef);
             }
         }
 
