@@ -100,7 +100,7 @@ public class EnableBeaconConfiguration {
                         initConsumers();
                         initProviders();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOG.error("" + e);
                     }
                 }
                 return bean;
@@ -126,7 +126,7 @@ public class EnableBeaconConfiguration {
         }
         if (beaconProtocol.getName().equals("beacon")) {
             if (StringUtil.isEmpty(beaconProtocol.getPort())) {
-                port = Integer.toString(1992);
+                port = Integer.toString(BeaconConstants.PORT);
             }
             if (!NumberUtils.isNumber(port)) {
                 throw new Exception("Port should be a positive integer in beacon-protocol");
@@ -163,7 +163,7 @@ public class EnableBeaconConfiguration {
                                         p.setProxy(BeaconUtil.getOriginBean(springContext.getBean(key)));
                                     } else {
                                         throw new Exception(
-                                                "cannot find spring bean with name '" + cls.getName() + "'");
+                                                "Cannot find spring bean with name '" + cls.getName() + "'");
                                     }
                                 } else {
                                     // 设置spring bean
@@ -327,6 +327,9 @@ public class EnableBeaconConfiguration {
                 if (StringUtil.isBlank(r.getGroup())) {
                     r.setGroup("");
                 }
+                if (StringUtil.isBlank(r.getTolerant())) {
+                    r.setTolerant(BeaconConstants.TOLERANT_FAILFAST);
+                }
                 if (StringUtil.isBlank(r.getDowngrade())) {
                     r.setDowngrade("");
                 } else {
@@ -335,7 +338,7 @@ public class EnableBeaconConfiguration {
                         throw new Exception(
                                 "Cannot resolve reference in beacon-reference with downgrade:" + r.getDowngrade());
                     }
-                    if (!("query".equals(arr[0]) || "fault".equals(arr[0]) || "timeout".equals(arr[0]))
+                    if (!("limit".equals(arr[0]) || "fault".equals(arr[0]) || "timeout".equals(arr[0]))
                             || !StringUtil.isNumeric(arr[1])) {
                         throw new Exception(
                                 "Cannot resolve reference in beacon-reference with wrong downgrade strategy ["
