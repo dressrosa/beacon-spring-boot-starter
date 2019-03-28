@@ -1,7 +1,7 @@
 /**
  *  唯有读书,不慵不扰
  */
-package com.xiaoyu.beacon.autoconfigure;
+package com.xiaoyu.beacon.starter;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -34,21 +34,21 @@ import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 
-import com.xiaoyu.beacon.autoconfigure.anno.BeaconExporter;
-import com.xiaoyu.beacon.autoconfigure.anno.BeaconRefer;
-import com.xiaoyu.core.common.bean.BeaconPath;
-import com.xiaoyu.core.common.constant.BeaconConstants;
-import com.xiaoyu.core.common.constant.From;
-import com.xiaoyu.core.common.extension.SpiManager;
-import com.xiaoyu.core.common.utils.BeaconUtil;
-import com.xiaoyu.core.common.utils.NetUtil;
-import com.xiaoyu.core.common.utils.StringUtil;
-import com.xiaoyu.core.register.Registry;
-import com.xiaoyu.core.rpc.api.Context;
-import com.xiaoyu.spring.config.BeaconFactoryBean;
-import com.xiaoyu.spring.config.BeaconProtocol;
-import com.xiaoyu.spring.config.BeaconReference;
-import com.xiaoyu.spring.config.BeaconRegistry;
+import com.xiaoyu.beacon.common.bean.BeaconPath;
+import com.xiaoyu.beacon.common.constant.BeaconConstants;
+import com.xiaoyu.beacon.common.constant.From;
+import com.xiaoyu.beacon.common.extension.SpiManager;
+import com.xiaoyu.beacon.common.utils.BeaconUtil;
+import com.xiaoyu.beacon.common.utils.NetUtil;
+import com.xiaoyu.beacon.common.utils.StringUtil;
+import com.xiaoyu.beacon.registry.Registry;
+import com.xiaoyu.beacon.rpc.api.Context;
+import com.xiaoyu.beacon.spring.config.BeaconFactoryBean;
+import com.xiaoyu.beacon.spring.config.BeaconProtocol;
+import com.xiaoyu.beacon.spring.config.BeaconReference;
+import com.xiaoyu.beacon.spring.config.BeaconRegistry;
+import com.xiaoyu.beacon.starter.anno.BeaconExporter;
+import com.xiaoyu.beacon.starter.anno.BeaconRefer;
 
 /**
  * @author hongyu

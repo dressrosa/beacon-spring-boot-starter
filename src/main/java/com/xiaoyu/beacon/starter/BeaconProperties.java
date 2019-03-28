@@ -1,12 +1,12 @@
 /**
  *  唯有读书,不慵不扰
  */
-package com.xiaoyu.beacon.autoconfigure;
+package com.xiaoyu.beacon.starter;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import com.xiaoyu.spring.config.BeaconProtocol;
-import com.xiaoyu.spring.config.BeaconRegistry;
+import com.xiaoyu.beacon.spring.config.BeaconProtocol;
+import com.xiaoyu.beacon.spring.config.BeaconRegistry;
 
 /**
  * @author hongyu

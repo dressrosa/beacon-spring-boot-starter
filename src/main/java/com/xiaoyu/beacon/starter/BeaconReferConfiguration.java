@@ -1,12 +1,12 @@
 /**
  *  唯有读书,不慵不扰
  */
-package com.xiaoyu.beacon.autoconfigure;
+package com.xiaoyu.beacon.starter;
 
 import java.util.List;
 
-import com.xiaoyu.beacon.autoconfigure.anno.BeaconRefer;
-import com.xiaoyu.spring.config.BeaconReference;
+import com.xiaoyu.beacon.spring.config.BeaconReference;
+import com.xiaoyu.beacon.starter.anno.BeaconRefer;
 
 /**
  * @author hongyu

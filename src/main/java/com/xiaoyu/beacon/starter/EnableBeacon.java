@@ -1,7 +1,7 @@
 /**
  *  唯有读书,不慵不扰
  */
-package com.xiaoyu.beacon.autoconfigure;
+package com.xiaoyu.beacon.starter;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
