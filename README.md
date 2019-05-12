@@ -1,8 +1,8 @@
-beacon-spring-boot-starter  
-用于beacon兼容spring boot
+# beacon-spring-boot-starter  
+#### 用于beacon兼容spring boot
 
-用法:
-在main方法上加上 **@EnableBeacon**
+## 使用方法:
+### 1. 在启动类加上注解 **@EnableBeacon**
 
 ```
 @SpringBootApplication
@@ -24,7 +24,7 @@ public class TestApplication {
 ```
 
 
-提供者:
+### 2. provider端:
 在接口实现类上加 **@BeaconExporter** 注解
 
 ```
@@ -57,8 +57,8 @@ public class HelloServiceImpl implements IHelloService {
 ```
 
 
-消费者:
-继承 **BeaconReferConfiguration**类,加上注解 **@BeaconRefer**,返回所有rpc相关的接口
+### 3. consumer端:
+新增一个类并继承 **BeaconReferConfiguration**类,加上注解 **@BeaconRefer**,返回所有rpc相关的接口
 
 ```
 @BeaconRefer
@@ -73,4 +73,5 @@ public class TestBeaconRefer extends BeaconReferConfiguration {
 
 }
 ```
+
 
