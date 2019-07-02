@@ -66,7 +66,7 @@ public class EnableBeaconConfiguration {
     /**
      * 缓存exporter,等spring启动后才进行注册
      */
-    private static Set<BeaconPath> exporterSet = new HashSet<>();
+    private static Set<BeaconPath> Lazy_Exporter_Set = new HashSet<>();
 
     @Autowired
     private GenericApplicationContext springContext;
@@ -124,7 +124,7 @@ public class EnableBeaconConfiguration {
         if (StringUtil.isEmpty(beaconProtocol.getName())) {
             throw new Exception("Name cannot be null in beacon-protocol");
         }
-        if (beaconProtocol.getName().equals("beacon")) {
+        if ("beacon".equals(beaconProtocol.getName())) {
             if (StringUtil.isEmpty(beaconProtocol.getPort())) {
                 port = Integer.toString(BeaconConstants.PORT);
             }
@@ -144,49 +144,50 @@ public class EnableBeaconConfiguration {
                     try {
                         context.shutdown();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOG.error("" + e);
                     }
                 } else if (event instanceof ContextRefreshedEvent) {
                     // 注册exporter
                     LOG.info("Register the beacon exporter.");
                     Registry registry = context.getRegistry();
-                    final Set<BeaconPath> sets = exporterSet;
+                    final Set<BeaconPath> sets = Lazy_Exporter_Set;
                     try {
                         for (BeaconPath p : sets) {
-                            if (p.getSide() == From.SERVER) {
-                                Class<?> cls = Class.forName(p.getRef());
-                                Map<String, ?> proxyBeans = springContext.getBeansOfType(cls, true, true);
-                                // TODO
-                                if (proxyBeans.isEmpty()) {
-                                    String key = StringUtil.lowerFirstChar(cls.getSimpleName());
-                                    if (springContext.containsBean(key)) {
-                                        p.setProxy(BeaconUtil.getOriginBean(springContext.getBean(key)));
-                                    } else {
-                                        throw new Exception(
-                                                "Cannot find spring bean with name '" + cls.getName() + "'");
-                                    }
+                            if (p.getSide() != From.SERVER) {
+                                continue;
+                            }
+                            Class<?> cls = Class.forName(p.getRef());
+                            Map<String, ?> proxyBeans = springContext.getBeansOfType(cls, true, true);
+                            // TODO
+                            if (proxyBeans.isEmpty()) {
+                                String key = StringUtil.lowerFirstChar(cls.getSimpleName());
+                                if (springContext.containsBean(key)) {
+                                    p.setProxy(BeaconUtil.getOriginBean(springContext.getBean(key)));
                                 } else {
-                                    // 设置spring bean
-                                    Iterator<?> iter = proxyBeans.values().iterator();
-                                    if (proxyBeans.size() == 1) {
-                                        p.setProxy(iter.next());
-                                    } else {
-                                        while (iter.hasNext()) {
-                                            Object bean = iter.next();
-                                            if (cls.isInstance(bean)) {
-                                                p.setProxy(bean);
-                                                break;
-                                            }
+                                    throw new Exception(
+                                            "Cannot find spring bean with name '" + cls.getName() + "'");
+                                }
+                            } else {
+                                // 设置spring bean
+                                Iterator<?> iter = proxyBeans.values().iterator();
+                                if (proxyBeans.size() == 1) {
+                                    p.setProxy(iter.next());
+                                } else {
+                                    while (iter.hasNext()) {
+                                        Object bean = iter.next();
+                                        if (cls.isInstance(bean)) {
+                                            p.setProxy(bean);
+                                            break;
                                         }
                                     }
                                 }
-                                registry.registerService(p);
                             }
+                            registry.registerService(p);
                         }
                         // 使命完成
-                        exporterSet = null;
+                        Lazy_Exporter_Set = null;
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LOG.error("" + e);
                     }
                 }
             }
@@ -290,7 +291,7 @@ public class EnableBeaconConfiguration {
                         .setDowngrade("")
                         .setTolerant("");
                 beaconPath.setPort(beaconProtocol.getPort());
-                exporterSet.add(beaconPath);
+                Lazy_Exporter_Set.add(beaconPath);
             } catch (Exception e) {
                 LOG.error("Cannot resolve exporter,please check in {}", refName);
                 return;

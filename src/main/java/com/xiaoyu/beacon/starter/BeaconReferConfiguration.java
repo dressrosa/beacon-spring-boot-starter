@@ -5,6 +5,9 @@ package com.xiaoyu.beacon.starter;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.xiaoyu.beacon.spring.config.BeaconReference;
 import com.xiaoyu.beacon.starter.anno.BeaconRefer;
 
@@ -30,18 +33,19 @@ import com.xiaoyu.beacon.starter.anno.BeaconRefer;
 @BeaconRefer
 public abstract class BeaconReferConfiguration {
 
+    private static final Logger LOG = LoggerFactory.getLogger(BeaconReferConfiguration.class);
+
     public final List<BeaconReference> beaconReference() {
         List<BeaconReference> referList = null;
         try {
             referList = this.doFindBeaconRefers();
-            if(referList == null) {
+            if (referList == null) {
                 throw new Exception("list of beaconReference cannot be nulll");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("" + e);
         }
         return referList;
-        
     }
 
     /**
