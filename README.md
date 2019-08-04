@@ -73,5 +73,7 @@ public class TestBeaconRefer extends BeaconReferConfiguration {
 
 }
 ```
+### more example:
+[beacon-test-springboot](https://github.com/dressrosa/beacon-test-springboot)
 
 

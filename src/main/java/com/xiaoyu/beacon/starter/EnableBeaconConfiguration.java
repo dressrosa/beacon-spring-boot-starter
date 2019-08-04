@@ -133,7 +133,8 @@ public class EnableBeaconConfiguration {
             }
         }
         Context context = SpiManager.holder(Context.class).target(beaconProtocol.getName());
-        context.server(Integer.valueOf(port));
+        context.port(Integer.valueOf(port));
+        context.server();
         // 赋值
         Beacon_Protocol = beaconProtocol;
         this.springContext.addApplicationListener(new ApplicationListener<ApplicationEvent>() {
